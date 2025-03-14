@@ -1,0 +1,90 @@
+<!-- templates/view_resume.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Details - {{ filename }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        .flash-messages {
+            margin-bottom: 1rem;
+        }
+        .skill-badge {
+            margin-right: 0.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .resume-text {
+            white-space: pre-line;
+            font-family: monospace;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">Resume Details: {{ filename }}</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Resume Content</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="resume-text border p-3 bg-light">
+                            {{ resume_text }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Skills Identified</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for skill in skills %}
+                        <span class="badge bg-secondary skill-badge">{{ skill }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Improvement Suggestions</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ suggestions|safe }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2 col-md-6 mx-auto mb-4">
+            <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Screen More Resumes</a>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
