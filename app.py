@@ -14,8 +14,11 @@ load_dotenv()
 # Get OpenAI API key from environment variable or use a default for development
 openai.api_key = os.environ.get("OPENAI_API_KEY", "your_api_key_here")
 
+# Initialize the Flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get("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", "resume_screening_secret_key")
+
+# Set secret key for session management
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "your_secret_key_here")
 
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
@@ -193,6 +196,7 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_files():
+    
     if 'job_description' not in request.form or not request.form['job_description'].strip():
         flash('No job description provided!', 'error')
         return redirect(request.url)
@@ -239,6 +243,7 @@ def upload_files():
                 'match_score': match_score,
                 'suggestions': suggestions
             })
+    print("Resume Data:", resume_data)        
     
     if not resume_data:
         flash('No valid resumes were processed!', 'error')
