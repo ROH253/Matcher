@@ -69,13 +69,14 @@
                             <h6>Match Score:</h6>
                             <div class="progress">
                                 <div class="progress-bar bg-{{ 'success' if resume.match_score >= 70 else 'warning' if resume.match_score >= 50 else 'danger' }}" 
-                                     role="progressbar" 
-                                     styles="width: {{ resume.match_score }}%;" 
-                                     aria-valuenow="{{ resume.match_score|round|int }}" 
-                                     aria-valuemin="0" 
-                                     aria-valuemax="100">
-                                    {{ resume.match_score|round|int }}%
-                                </div>
+                                    role="progressbar" 
+                                    style="width: {{ resume.match_score }}%;" 
+                                    aria-valuenow="{{ resume.match_score|round|int }}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                   {{ resume.match_score|round|int }}%
+                               </div>
+                               
                             </div>
                         </div>
                         

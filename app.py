@@ -1,28 +1,12 @@
-from flask import Flask, request, render_template, redirect, url_for, flash, session
 import os
 import openai
 from werkzeug.utils import secure_filename
 import PyPDF2
-import re
-import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-import pandas as pd
+import docx2txt
+import torch
+from transformers import pipeline
+from flask import Flask, request, render_template, redirect, url_for, flash, session
 from dotenv import load_dotenv
-import requests
-import joblib
-
-# Download necessary NLTK data
-try:
-    nltk.data.find('tokenizers/punkt')
-    nltk.data.find('corpora/stopwords')
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('punkt')
-    nltk.download('stopwords')
-    nltk.download('wordnet')
-    nltk.download('averaged_perceptron_tagger')
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -45,21 +29,8 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 # Create upload directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Initialize NLTK tools
-stop_words = set(stopwords.words('english'))
-lemmatizer = WordNetLemmatizer()
-
-# Common technical skills list for matching
-common_skills = [
-    "python", "java", "javascript", "html", "css", "sql", "nosql", "react", 
-    "angular", "vue", "node", "express", "django", "flask", "spring", "aws", 
-    "azure", "gcp", "docker", "kubernetes", "git", "jenkins", "ci/cd", "agile", 
-    "scrum", "rest", "graphql", "mongodb", "postgresql", "mysql", "oracle", 
-    "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy", "data analysis",
-    "machine learning", "deep learning", "nlp", "computer vision", "devops",
-    "linux", "windows", "macos", "excel", "word", "powerpoint", "tableau",
-    "power bi", "jira", "confluence", "photoshop", "illustrator", "figma"
-]
+# Initialize Hugging Face NER pipeline
+nlp = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -77,12 +48,7 @@ def extract_text_from_pdf(pdf_path):
 
 def extract_text_from_docx(docx_path):
     try:
-        # For Python 3.13, a direct approach instead of docx2txt
-        with open(docx_path, 'rb') as file:
-            # Simple text extraction using regex (not ideal but works for basic cases)
-            content = file.read().decode('utf-8', errors='ignore')
-            text = re.sub(r'<[^>]+>', ' ', content)
-            return text
+        return docx2txt.process(docx_path)
     except Exception as e:
         print(f"Error extracting text from DOCX: {e}")
         return ""
@@ -104,58 +70,15 @@ def extract_text(file_path):
 
 def extract_skills(resume_text):
     """
-    Extract skills from resume text using NLTK and OpenAI
+    Extract skills from resume text using Hugging Face's NER model
     """
-    # First pass: Use NLTK to identify potential skill entities
-    tokens = word_tokenize(resume_text.lower())
+    # Apply the named entity recognition (NER) model
+    entities = nlp(resume_text)
     
-    # Remove stop words and lemmatize
-    filtered_tokens = [lemmatizer.lemmatize(token) for token in tokens if token.isalpha() and token not in stop_words]
+    # Filter out entities that are likely to be skills (e.g., tools, programming languages)
+    skills = [entity['word'] for entity in entities if entity['entity'] == 'B-ORG' or entity['entity'] == 'B-MISC']
     
-    # Extract ngrams (1-3 word combinations)
-    bigrams = [' '.join(filtered_tokens[i:i+2]) for i in range(len(filtered_tokens)-1)]
-    trigrams = [' '.join(filtered_tokens[i:i+3]) for i in range(len(filtered_tokens)-2)]
-    
-    # Combine all potential skill candidates
-    all_candidates = filtered_tokens + bigrams + trigrams
-    
-    # Match against common skills list
-    potential_skills = [skill for skill in all_candidates if skill in common_skills]
-    
-    # Extract words tagged as nouns that might be skills
-    tagged_tokens = nltk.pos_tag(filtered_tokens)
-    noun_tokens = [word for word, tag in tagged_tokens if tag.startswith('NN')]
-    potential_skills.extend(noun_tokens)
-    
-    # Second pass: Use OpenAI to refine and identify actual skills
-    skills_prompt = f"""
-    Analyze the following resume text and extract a list of professional skills.
-    Focus on technical skills, tools, programming languages, and professional certifications.
-    
-    Resume text snippet:
-    {resume_text[:4000]}  # Limit text length to avoid token issues
-    
-    Return ONLY a comma-separated list of skills, nothing else.
-    """
-    
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[ 
-                {"role": "system", "content": "You are a resume parsing assistant that extracts skills."},
-                {"role": "user", "content": skills_prompt}
-            ]
-        )
-        
-        ai_skills = response["choices"][0]["message"]["content"].strip()
-        skills_list = [skill.strip() for skill in ai_skills.split(',')]
-        
-        # Remove duplicates and sort
-        return sorted(list(set(skills_list)))
-    except Exception as e:
-        print(f"Error extracting skills with AI: {e}")
-        # Fallback to basic NLP extraction if AI fails
-        return sorted(list(set([skill.lower() for skill in potential_skills if len(skill) > 3])))[:20]
+    return sorted(list(set(skills)))
 
 def score_resume(resume_text, job_description):
     """
@@ -188,6 +111,7 @@ def score_resume(resume_text, job_description):
         
         score_text = response["choices"][0]["message"]["content"].strip()
         # Extract just the number from the response
+        import re
         score_match = re.search(r'\d+', score_text)
         if score_match:
             return float(score_match.group())
@@ -235,7 +159,6 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_files():
-    
     if 'job_description' not in request.form or not request.form['job_description'].strip():
         flash('No job description provided!', 'error')
         return redirect(request.url)
@@ -312,9 +235,13 @@ def results():
     # If no resumes passed the threshold, show a message
     if not filtered_resume_data:
         flash(f'No candidates scored above {threshold_score}.', 'info')
+    filtered_resume_data.sort(key=lambda x: x['match_score'], reverse=True)
+    
+    # Limit to top 4 resumes only
+    top_resumes = filtered_resume_data[:4]
     
     return render_template('results.html', 
-                          resume_data=filtered_resume_data,
+                          resume_data=top_resumes,
                           job_description=job_description)
 
 @app.route('/view_resume/<filename>')
