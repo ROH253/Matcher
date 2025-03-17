@@ -10,3 +10,7 @@ python-dotenv==1.0.0     # For managing environment variables
 requests==2.32.3         # For API calls
 joblib==1.4.2            # For model saving
 gunicorn==21.2.0
+docx2txt
+torch
+transformers
+werkzeug
