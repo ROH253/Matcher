@@ -3,10 +3,26 @@ import os
 import openai
 from werkzeug.utils import secure_filename
 import PyPDF2
-import docx2txt
-import spacy
+import re
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 import pandas as pd
 from dotenv import load_dotenv
+import requests
+import joblib
+
+# Download necessary NLTK data
+try:
+    nltk.data.find('tokenizers/punkt')
+    nltk.data.find('corpora/stopwords')
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('punkt')
+    nltk.download('stopwords')
+    nltk.download('wordnet')
+    nltk.download('averaged_perceptron_tagger')
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -29,14 +45,21 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 # Create upload directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Load NLP model
-try:
-    nlp = spacy.load("en_core_web_md")
-except OSError:
-    # If model is not installed, download it
-    import spacy.cli
-    spacy.cli.download("en_core_web_md")
-    nlp = spacy.load("en_core_web_md")
+# Initialize NLTK tools
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+# Common technical skills list for matching
+common_skills = [
+    "python", "java", "javascript", "html", "css", "sql", "nosql", "react", 
+    "angular", "vue", "node", "express", "django", "flask", "spring", "aws", 
+    "azure", "gcp", "docker", "kubernetes", "git", "jenkins", "ci/cd", "agile", 
+    "scrum", "rest", "graphql", "mongodb", "postgresql", "mysql", "oracle", 
+    "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy", "data analysis",
+    "machine learning", "deep learning", "nlp", "computer vision", "devops",
+    "linux", "windows", "macos", "excel", "word", "powerpoint", "tableau",
+    "power bi", "jira", "confluence", "photoshop", "illustrator", "figma"
+]
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -54,7 +77,12 @@ def extract_text_from_pdf(pdf_path):
 
 def extract_text_from_docx(docx_path):
     try:
-        return docx2txt.process(docx_path)
+        # For Python 3.13, a direct approach instead of docx2txt
+        with open(docx_path, 'rb') as file:
+            # Simple text extraction using regex (not ideal but works for basic cases)
+            content = file.read().decode('utf-8', errors='ignore')
+            text = re.sub(r'<[^>]+>', ' ', content)
+            return text
     except Exception as e:
         print(f"Error extracting text from DOCX: {e}")
         return ""
@@ -76,16 +104,28 @@ def extract_text(file_path):
 
 def extract_skills(resume_text):
     """
-    Extract skills from resume text using SpaCy NLP and OpenAI
+    Extract skills from resume text using NLTK and OpenAI
     """
-    # First pass: Use SpaCy to identify potential skill entities
-    doc = nlp(resume_text)
+    # First pass: Use NLTK to identify potential skill entities
+    tokens = word_tokenize(resume_text.lower())
     
-    # Extract named entities that might be skills
-    potential_skills = [ent.text for ent in doc.ents if ent.label_ in ["ORG", "PRODUCT"]]
+    # Remove stop words and lemmatize
+    filtered_tokens = [lemmatizer.lemmatize(token) for token in tokens if token.isalpha() and token not in stop_words]
     
-    # Extract noun phrases as potential skills
-    potential_skills.extend([chunk.text for chunk in doc.noun_chunks])
+    # Extract ngrams (1-3 word combinations)
+    bigrams = [' '.join(filtered_tokens[i:i+2]) for i in range(len(filtered_tokens)-1)]
+    trigrams = [' '.join(filtered_tokens[i:i+3]) for i in range(len(filtered_tokens)-2)]
+    
+    # Combine all potential skill candidates
+    all_candidates = filtered_tokens + bigrams + trigrams
+    
+    # Match against common skills list
+    potential_skills = [skill for skill in all_candidates if skill in common_skills]
+    
+    # Extract words tagged as nouns that might be skills
+    tagged_tokens = nltk.pos_tag(filtered_tokens)
+    noun_tokens = [word for word, tag in tagged_tokens if tag.startswith('NN')]
+    potential_skills.extend(noun_tokens)
     
     # Second pass: Use OpenAI to refine and identify actual skills
     skills_prompt = f"""
@@ -148,7 +188,6 @@ def score_resume(resume_text, job_description):
         
         score_text = response["choices"][0]["message"]["content"].strip()
         # Extract just the number from the response
-        import re
         score_match = re.search(r'\d+', score_text)
         if score_match:
             return float(score_match.group())
