@@ -14,4 +14,4 @@ docx2txt
 torch
 transformers
 werkzeug
-procflie
+
