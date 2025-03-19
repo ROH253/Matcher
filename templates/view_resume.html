@@ -89,17 +89,20 @@
                     <div class="card-header">
                         <h5 class="mb-0">Match Score</h5>
                     </div>
-                    <div class="card-body">
-                        <p class="match-score 
-                            {% if match_score >= 70 %}success
-                            {% elif match_score >= 50 %}primary
-                            {% elif match_score >= 30 %}warning
-                            {% else %}danger
-                            {% endif %}">
-                            Score: {{ match_score }}%
-                        </p>
-                    </div>
+                <div class="card-body">
+                        {% if match_score is defined %}
+                            <p>Match Score: {{ match_score }}%</p>
+                            {% if match_score >= 70 %}
+                        <p>Success</p>
+                        {% else %}
+                    <p>Not a match</p>
+                      {% endif %}
+                      {% else %}
+                      <p>Match score not available</p>
+                      {% endif %}
+
                 </div>
+            </div>
                 
                 <div class="card mb-4">
                     <div class="card-header">
