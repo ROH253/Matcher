@@ -1,17 +1,20 @@
-Django==5.1.7            # For backend API
-NLTK==3.8.1              # NLP alternative to spaCy
-scikit-learn==1.6.1      # For AI model
-pandas==2.2.3            # For data handling
-numpy==2.0.2             # For numerical operations
-Flask==2.3.3             # Lightweight API (if needed)
-openai==0.28.1           # For AI-based analysis
-PyPDF2==3.0.1            # For reading PDF resumes
-python-dotenv==1.0.0     # For managing environment variables
-requests==2.32.3         # For API calls
-joblib==1.4.2            # For model saving
-gunicorn==21.2.0
-docx2txt
-torch
-transformers
-werkzeug
+Flask==2.3.3             # Lightweight API
+gunicorn==21.2.0         # Production WSGI server
+flask-cors==4.0.0        # Handle CORS if needed
 
+# NLP & AI dependencies
+NLTK==3.8.1
+scikit-learn==1.6.1
+pandas==2.2.3
+numpy==2.0.2
+openai==0.28.1
+PyPDF2==3.0.1
+docx2txt==0.8
+torch==2.6.0
+transformers==4.49.0
+
+# Other dependencies
+python-dotenv==1.0.0
+requests==2.32.3
+joblib==1.4.2
+werkzeug==3.1.3
