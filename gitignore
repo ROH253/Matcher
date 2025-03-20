@@ -1,6 +1,0 @@
-echo "venv/
-__pycache__/
-*.pyc
-uploads/*
-!uploads/.gitkeep
-.env" > .gitignore
