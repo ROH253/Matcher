@@ -35,14 +35,15 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Upload Resumes</h5>
-                <form action="{{ url_for('upload_files') }}" method="post" enctype="multipart/form-data">
+                <!-- ✅ Correct endpoint -->
+                <form action="{{ url_for('index') }}" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="job_description" class="form-label">Job Description</label>
                         <textarea class="form-control" id="job_description" name="job_description" rows="6" required placeholder="Paste the job description here..."></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="resumes" class="form-label">Select Resumes (PDF, DOCX, TXT)</label>
-                        <input class="form-control" type="file" id="resumes" name="resumes" multiple accept=".pdf,.docx,.txt" required>
+                        <label for="resumes" class="form-label">Select Resumes (PDF, DOCX)</label>
+                        <input class="form-control" type="file" id="resumes" name="resumes" multiple accept=".pdf,.docx" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Analyze Resumes</button>
                 </form>

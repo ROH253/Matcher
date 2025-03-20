@@ -76,10 +76,11 @@
                                     aria-valuemax="100">
                                    {{ resume.match_score|round|int }}%
                                </div>
-                               
                             </div>
                         </div>
-                        
+
+                        <!-- Safely render skills only if available -->
+                        {% if resume.skills %}
                         <h6>Key Skills:</h6>
                         <div class="mb-3">
                             {% for skill in resume.skills[:10] %}
@@ -89,6 +90,7 @@
                             <span class="badge bg-light text-dark skill-badge">+{{ resume.skills|length - 10 }} more</span>
                             {% endif %}
                         </div>
+                        {% endif %}
                         
                         <div class="d-grid gap-2">
                             <a href="{{ url_for('view_resume', filename=resume.filename) }}" class="btn btn-primary">View Details</a>
